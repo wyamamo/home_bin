@@ -11,7 +11,7 @@
 SP2US=$(cd $(dirname $0); pwd)/$(basename $0)
 #echo ${SP2US}; exit
 
-ls -1 | gawk 'BEGIN{FS="\t"} (/ /||/　/){a0=gensub(/ /,"\\\\ ","G",$1); a1=gensub(/ /,"_","G",$1); a1=gensub(/　/,"_","G",a1); c="mv "a0" "a1; print(c); system(c)}'
+ls -1 | gawk 'BEGIN{FS="\t"} (/ /||/　/){ a0=gensub(/ /,"\\\\ ","G",$1); a0=gensub(/\(/,"\\\\(","G",a0); a0=gensub(/\)/,"\\\\)","G",a0); a1=gensub(/ /,"_","G",$1); a1=gensub(/　/,"_","G",a1); a1=gensub(/\(/,"_","G",a1); a1=gensub(/\)/,"_","G",a1); c="mv "a0" "a1; print(c); system(c)}'
 
 for d in $(find . -maxdepth 1 -type d)
 do 
