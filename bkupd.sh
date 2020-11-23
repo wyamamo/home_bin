@@ -20,6 +20,8 @@
 #	2014/10/19(Sun)	Bug fix ... Lacking double quate around directory variables
 #	2018/01/08(Mon)	Small fixes
 #	2018/01/20(Sat)	cd `readlink -f .`
+#	2020/11/23(Mon) Ingore LibreOffice temporary files whose names start with ".~lock."
+#	2020/11/23(Mon) Print cp command if the file in the backup directory has the newer timestamp.
 #
 
 #
@@ -101,11 +103,8 @@ ${DBGMSG} "destination ... $DST"
 for f in .* *; do
 	${XDBGMSG} "$f"
 	CPFLAG=0
-	if [ "$f" = ".." ]; then
-		:
-	elif [ "$f" = "." ]; then
-		:
-	elif [ "$f" = "*" ]; then
+	f7=`echo $f | cut -c 1-7`
+	if [ "$f" = ".." ] || [ "$f" = "." ] || [ "$f" = "*" ] || [ "$f7" = ".~lock." ]; then
 		:
 	elif [ -L "$f" ]; then
 		${DBGMSG} "symbolic link file $f found"
@@ -139,6 +138,13 @@ for f in .* *; do
 		elif [ "${DST}/$f" -ot "$f" ];then
 			${VRBMSG} "copy `pwd`/$f (newer)"
 			${CPCMD} "$f" "${DST}"
+		elif [ "${DST}/$f" -nt "$f" ];then
+			filesize0=$(stat -c%s "${DST}/$f")
+			filesize1=$(stat -c%s "$f")
+			if [ $filesize0 -ne $filesize1 ]; then
+				${VRBMSG} "The buckup directory has a newer file. Maybe you want to execute ..."
+				${VRBMSG} "cp -p ${DST}/$f "`pwd`
+			fi
 		else
 			${DBGMSG} "warning ... ignore $f because it is not newer."
 		fi
