@@ -22,6 +22,8 @@
 #	2018/01/20(Sat)	cd `readlink -f .`
 #	2020/11/23(Mon) Ingore LibreOffice temporary files whose names start with ".~lock."
 #	2020/11/23(Mon) Print cp command if the file in the backup directory has the newer timestamp.
+#	2020/11/27(Fri) Check if the current path is under the buckup directory
+#	2020/11/27(Fri) Check non-existing files on the buckup directory
 #
 
 #
@@ -56,6 +58,16 @@ SRC_RT=(\
 # Destination path
 DST_RT=/media/vatarushka/VOLWIN10/DATA_NTFS/vatarushka
 
+# if the current is under the $DST_RT, exit
+${DBGMSG} "PWD   ="`pwd`
+SRC=`pwd`
+${DBGMSG} "source ... $SRC"
+
+if [ $DST_RT = ${SRC:0:${#DST_RT}} ]; then
+	echo ERROR: Current path is under $DST_RT
+	exit 1
+fi
+
 #
 # Move the symbolic path to its absolute path
 #
@@ -75,10 +87,6 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE:-$0}")"; pwd)"
 script_file=${0##*/}
 script_fp=${script_dir}/${script_file}
 ${DBGMSG} "script="${script_fp}
-${DBGMSG} "PWD   ="`pwd`
-
-SRC=`pwd`
-${DBGMSG} "source ... $SRC"
 
 DST=""
 for (( I = 0; I < ${#SRC_RT[@]}; ++I )); do
@@ -91,20 +99,19 @@ for (( I = 0; I < ${#SRC_RT[@]}; ++I )); do
         fi
 done
 if [ "$DST" = "" ];then
-        echo "error ... no destination for $SRC"
+        echo "ERROR: No destination for $SRC"
         exit 1
 fi
 ${DBGMSG} "destination ... $DST"
 
 
 #
-# Traverse ${PWD} - cp files & mkdir into the destination
+# Traverse ${SRC} - cp files & mkdir into the destination
 #
 for f in .* *; do
 	${XDBGMSG} "$f"
 	CPFLAG=0
-	f7=`echo $f | cut -c 1-7`
-	if [ "$f" = ".." ] || [ "$f" = "." ] || [ "$f" = "*" ] || [ "$f7" = ".~lock." ]; then
+	if [ "$f" = ".." ] || [ "$f" = "." ] || [ "$f" = "*" ] || [ "${f:0:7}" = ".~lock." ]; then
 		:
 	elif [ -L "$f" ]; then
 		${DBGMSG} "symbolic link file $f found"
@@ -117,7 +124,7 @@ for f in .* *; do
 	elif [ -d "$f" ]; then
 		${INFOMSG} "Backup a direcotry ... $f"
 		if [ $CALLCNT -gt $CALLLIMIT ];then
-			echo "stop ... exceed call limit $CALLLIMIT"
+			echo "ERROR: Exceeded call limit $CALLLIMIT"
 			exit 1
 		else
 			if [ ! -d "${DST}/$f" ]; then
@@ -128,27 +135,40 @@ for f in .* *; do
 		fi
 		cd ..
 	else
-		${INFOMSG} "warning ... Ignore an unknown type file ... ""$f"
+		${INFOMSG} "WARNING: Ignore an unknown type file ... ""$f"
 	fi
 	
 	if [ $CPFLAG -eq 1 ]; then
 		if [ ! -e "${DST}/$f" ];then
-			${VRBMSG} "copy `pwd`/$f (not exists)"
+			${VRBMSG} "INFO: $f ... Copied (not exists)"
 			${CPCMD} "$f" "${DST}"
 		elif [ "${DST}/$f" -ot "$f" ];then
-			${VRBMSG} "copy `pwd`/$f (newer)"
+			${VRBMSG} "INFO: $f ... Overwritten (newer)"
 			${CPCMD} "$f" "${DST}"
 		elif [ "${DST}/$f" -nt "$f" ];then
 			filesize0=$(stat -c%s "${DST}/$f")
 			filesize1=$(stat -c%s "$f")
 			if [ $filesize0 -ne $filesize1 ]; then
-				${VRBMSG} "The buckup directory has a newer file. Maybe you want to execute ..."
-				${VRBMSG} "cp -p ${DST}/$f "`pwd`
+				${VRBMSG} "INFO: The buckup directory has a newer file. Maybe you want to execute ..."
+				${VRBMSG} "	cp -p ${DST}/$f ."
 			fi
 		else
-			${DBGMSG} "warning ... ignore $f because it is not newer."
+			${DBGMSG} "WARNING: Ignore $f because it is not newer."
 		fi
 	fi
 done
 
+#
+# Check if a file/directorie exist only under $DST
+#
+cd $DST
+for f in .* *; do
+	if [ ! -e $SRC/$f ]; then
+		${VRBMSG} "INFO: $f ... Not here but under $DST"
+	fi
+done
+
+#
+# Normal exit
+#
 exit 0
