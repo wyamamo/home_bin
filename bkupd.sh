@@ -56,7 +56,7 @@ SRC_RT=(\
 )
 
 # Destination path
-DST_RT=/media/vatarushka/VOLWIN10/DATA_NTFS/vatarushka
+DST_RT=/VOLWIN10/DATA_NTFS/vatarushka
 
 # if the current is under the $DST_RT, exit
 ${DBGMSG} "PWD   ="`pwd`
